@@ -1,0 +1,14 @@
+* org-parser
+
+This is trying to be a complete org-mode parser written in [[https://kotlinlang.org/][kotlin]], to be used from Java, Kotlin or other JVM languages to parse org-mode files and extract information. We'll see how far we get.
+
+* Features so far
+
+Not much here yet, I will update the readme according to how far I get with this:
+
+ - Headline parsing
+ - Greater blocks, dynamic blocks
+ - Drawers, property drawers
+ - Footnotes
+ - Affiliated Keywords
+ - Work on timestamps is ongoing.
