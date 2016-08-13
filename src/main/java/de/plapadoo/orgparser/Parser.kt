@@ -158,46 +158,68 @@ fun affiliatedKeywordParser(): Parser<AffiliatedKeyword> {
             { key, optional, value -> AffiliatedKeyword(key, optional, value) })
 }
 
-fun timestampParser(): Parser<Timestamp> {
-    val sexp = stringParser("<%%(").next(regexParser("[^)]*", "timestamp sexp")).followedBy(charParser('>')).map { Timestamp.Sexp(it) }
-    val space = charParser(' ')
-    val date =
-            Parsers.sequence(
-                    regexParser("[0-9]{4}", "date, year").followedBy(space),
-                    regexParser("[0-9]{1,2}", "date, month").followedBy(space),
-                    regexParser("[0-9]{1,2}", "date, day").followedBy(space),
-                    regexParser("[^+-\\]>\\S]+", "dayname"),
-                    { year, month, day, dayname -> Date(LocalDate.of(year.toInt(), month.toInt(), day.toInt())) })
-    val time =
-            Parsers.sequence(
-                    regexParser("[0-9]{1,2}", "date, hour").followedBy(charParser(':')),
-                    regexParser("[0-9]{1,2}", "date, minute"),
-                    { hour, minute -> Time(LocalTime.of(hour.toInt(), minute.toInt())) })
+// This does not actually parse sexp, just correctly matched pairs.
+fun sexpParser(): Parser<Timestamp.Sexp> {
+    val openBrace = charParser('(')
+    val closingBrace = charParser(')')
+    val exceptBrace = regexParser("[^()]+", "sexp non-brace chars")
+    val inner = Parser.newReference<String>()
+    val sexp = Parsers.sequence(
+            openBrace,
+            inner.lazy(),
+            closingBrace,
+            { open, inner, close -> open + inner + close })
+    inner.set(Parsers.or(exceptBrace, sexp).many().map { strings -> strings.joinToString(separator = "") })
+    return sexp.map { Timestamp.Sexp(descriptor = it) }
+}
+
+fun repeaterOrDelayParser(): Parser<RepeaterOrDelay> {
     val mark = Parsers.or(
             stringParser("++").map { Repeater.CATCH_UP },
             charParser('+').map { Repeater.CUMULATE },
             stringParser(".+").map { Repeater.RESTART },
             stringParser("--").map { Repeater.ALL },
             charParser('-').map { Repeater.FIRST })
-    val value = regexParser("[0-9]+","value").map { it.toInt() }
+    val value = regexParser("[0-9]+", "value").map { it.toInt() }
     val unit = Parsers.or(
             charParser('h').map { RepeaterUnit.HOUR },
             charParser('d').map { RepeaterUnit.DAY },
             charParser('w').map { RepeaterUnit.WEEK },
             charParser('m').map { RepeaterUnit.MONTH },
-            charParser('y').map { RepeaterUnit.YEAR }
-    )
-    val repeaterOrDelay =
+            charParser('y').map { RepeaterUnit.YEAR })
+    return Parsers.sequence(
+            mark,
+            value,
+            unit,
+            { mark, value, unit -> RepeaterOrDelay(mark, value, unit) })
+}
+
+fun timestampParser(): Parser<Timestamp> {
+    val sexp = stringParser("<%%").next(sexpParser()).followedBy(charParser('>'))
+    val space = charParser(' ')
+    val dash = charParser('-')
+    val date =
             Parsers.sequence(
-                    mark,
-                    value,
-                    unit,
-                    { mark, value, unit -> RepeaterOrDelay(mark, value, unit) }
-            )
+                    regexParser("[0-9]{4}", "date, year").followedBy(dash),
+                    regexParser("[0-9]{1,2}", "date, month").followedBy(dash),
+                    regexParser("[0-9]{1,2}", "date, day").followedBy(space),
+                    regexParser("[^\\]+-> \t]+", "day name"),
+                    { year, month, day, dayname -> Date(LocalDate.of(year.toInt(), month.toInt(), day.toInt())) })
+    val time =
+            Parsers.sequence(
+                    regexParser("[0-9]{1,2}", "date, hour").followedBy(charParser(':')),
+                    regexParser("[0-9]{1,2}", "date, minute"),
+                    { hour, minute -> Time(LocalTime.of(hour.toInt(), minute.toInt())) })
     val activePrefix = charParser('<')
     val activeSuffix = charParser('>')
     val inactivePrefix = charParser('[')
     val inactiveSuffix = charParser(']')
+
+    // This is an ugly helper type to get around the jparsec "restriction" of only sequencing
+    // up to 5 parsers
+    data class TimeRange(val from: Time, val to: Time)
+
+    val repeaterOrDelay = repeaterOrDelayParser()
     val active =
             Parsers.sequence(
                     activePrefix.next(date.followedBy(space)),
@@ -205,7 +227,7 @@ fun timestampParser(): Parser<Timestamp> {
                     space.next(repeaterOrDelay).optional(),
                     space.next(repeaterOrDelay).optional(),
                     activeSuffix,
-                    {date,time,repeater1,repeater2,suffix -> Timestamp.Active(date,time,repeater1,repeater2)})
+                    { date, time, repeater1, repeater2, suffix -> Timestamp.Active(date, time, repeater1, repeater2) })
     val inactive =
             Parsers.sequence(
                     inactivePrefix.next(date.followedBy(space)),
@@ -213,27 +235,48 @@ fun timestampParser(): Parser<Timestamp> {
                     space.next(repeaterOrDelay).optional(),
                     space.next(repeaterOrDelay).optional(),
                     inactiveSuffix,
-                    {date,time,repeater1,repeater2,suffix -> Timestamp.Inactive(date,time,repeater1,repeater2)})
+                    { date, time, repeater1, repeater2, suffix -> Timestamp.Inactive(date, time, repeater1, repeater2) })
+
     val inactiveTimeRange =
             Parsers.sequence(
+                    inactivePrefix.next(date.followedBy(space)),
+                    Parsers.sequence(
+                            time.followedBy(dash),
+                            time,
+                            { from, to -> TimeRange(from, to) }
+                    ),
+                    space.next(repeaterOrDelay).optional(),
+                    space.next(repeaterOrDelay).optional(),
+                    inactiveSuffix,
+                    { date, timeRange, repeater1, repeater2, suffix -> Timestamp.InactiveRange(Timestamp.Inactive(date, timeRange.from, repeater1, repeater2), Timestamp.Inactive(date, timeRange.to, repeater1, repeater2)) })
+    val activeTimeRange =
+            Parsers.sequence(
                     activePrefix.next(date.followedBy(space)),
-                    time.followedBy(charParser('-')),
-                    time.followedBy(charParser(' ')),
+                    Parsers.sequence(
+                            time.followedBy(dash),
+                            time,
+                            { from, to -> TimeRange(from, to) }
+                    ),
                     space.next(repeaterOrDelay).optional(),
                     space.next(repeaterOrDelay).optional(),
                     activeSuffix,
-                    {date,time1,time2,repeater1,repeater2,suffix -> Timestamp.ActiveRange(Timestamp.Active(date,time1,repeater1,repeater2),Timestamp.Active(date,time2,repeater1,repeater2))})
+                    { date, timeRange, repeater1, repeater2, suffix -> Timestamp.ActiveRange(Timestamp.Active(date, timeRange.from, repeater1, repeater2), Timestamp.Active(date, timeRange.to, repeater1, repeater2)) })
     val activeTotalRange =
             Parsers.sequence(
                     active.followedBy(stringParser("--")),
                     active,
-                    { from,to -> Timestamp.ActiveRange(from,to) })
+                    { from, to -> Timestamp.ActiveRange(from, to) })
     val inactiveTotalRange =
             Parsers.sequence(
                     inactive.followedBy(stringParser("--")),
                     inactive,
-                    { from,to -> Timestamp.InactiveRange(from,to) })
+                    { from, to -> Timestamp.InactiveRange(from, to) })
     return Parsers.or(
             sexp,
-            charParser('<'))
+            inactiveTimeRange,
+            activeTimeRange,
+            inactiveTotalRange,
+            activeTotalRange,
+            inactive,
+            active)
 }

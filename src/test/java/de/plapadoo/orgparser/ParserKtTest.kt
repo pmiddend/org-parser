@@ -2,6 +2,8 @@ package de.plapadoo.orgparser
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * Created by philipp on 8/7/16.
@@ -239,5 +241,166 @@ class ParserKtTest {
         val optional = "FOO"
         val value = "value"
         assertThat(affiliatedKeywordParser().parse("#+$key[$optional]: $value")).isEqualTo(AffiliatedKeyword(key = key,optional = optional,value = value))
+    }
+
+    @Test
+    fun `sexp`() {
+        val sexpcontent = "(lol (foobar))"
+        assertThat(sexpParser().parse("$sexpcontent")).isEqualTo(Timestamp.Sexp(descriptor = sexpcontent))
+    }
+
+    @Test
+    fun `sexpTimestamp`() {
+        val sexpcontent = "(lol (foobar))"
+        assertThat(timestampParser().parse("<%%$sexpcontent>")).isEqualTo(Timestamp.Sexp(descriptor = sexpcontent))
+    }
+
+    @Test
+    fun `active timestamp without repeater or delay`() {
+        val content = "<2016-08-13 Sat 9:52>"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time = Time(LocalTime.of(9,52))
+        val repeater1 = null
+        val repeater2 = null
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.Active(date = date,time = time, repeater1 = repeater1,repeater2 = repeater2))
+    }
+
+    @Test
+    fun `catch up repeater hour`() {
+        assertThat(repeaterOrDelayParser().parse("++3h")).isEqualTo(RepeaterOrDelay(mark = Repeater.CATCH_UP,value=3,unit = RepeaterUnit.HOUR))
+    }
+
+    @Test
+    fun `catch up repeater day`() {
+        assertThat(repeaterOrDelayParser().parse("++3d")).isEqualTo(RepeaterOrDelay(mark = Repeater.CATCH_UP,value=3,unit = RepeaterUnit.DAY))
+    }
+
+    @Test
+    fun `catch up repeater week`() {
+        assertThat(repeaterOrDelayParser().parse("++3w")).isEqualTo(RepeaterOrDelay(mark = Repeater.CATCH_UP,value=3,unit = RepeaterUnit.WEEK))
+    }
+
+    @Test
+    fun `catch up repeater month`() {
+        assertThat(repeaterOrDelayParser().parse("++3m")).isEqualTo(RepeaterOrDelay(mark = Repeater.CATCH_UP,value=3,unit = RepeaterUnit.MONTH))
+    }
+
+    @Test
+    fun `catch up repeater year`() {
+        assertThat(repeaterOrDelayParser().parse("++3y")).isEqualTo(RepeaterOrDelay(mark = Repeater.CATCH_UP,value=3,unit = RepeaterUnit.YEAR))
+    }
+
+    @Test
+    fun `cumulate repeater year`() {
+        assertThat(repeaterOrDelayParser().parse("+3y")).isEqualTo(RepeaterOrDelay(mark = Repeater.CUMULATE,value=3,unit = RepeaterUnit.YEAR))
+    }
+
+    @Test
+    fun `restart repeater year`() {
+        assertThat(repeaterOrDelayParser().parse(".+3y")).isEqualTo(RepeaterOrDelay(mark = Repeater.RESTART,value=3,unit = RepeaterUnit.YEAR))
+    }
+
+    @Test
+    fun `all delay year`() {
+        assertThat(repeaterOrDelayParser().parse("--3y")).isEqualTo(RepeaterOrDelay(mark = Repeater.ALL,value=3,unit = RepeaterUnit.YEAR))
+    }
+
+    @Test
+    fun `first delay year`() {
+        assertThat(repeaterOrDelayParser().parse("-3y")).isEqualTo(RepeaterOrDelay(mark = Repeater.FIRST,value=3,unit = RepeaterUnit.YEAR))
+    }
+
+    @Test
+    fun `inactive timestamp without repeater or delay`() {
+        val content = "[2016-08-13 Sat 9:52]"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time = Time(LocalTime.of(9,52))
+        val repeater1 = null
+        val repeater2 = null
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.Inactive(date = date,time = time, repeater1 = repeater1,repeater2 = repeater2))
+    }
+
+    @Test
+    fun `active timestamp with catch up repeater`() {
+        val content = "<2016-08-13 Sat 9:52 ++3h>"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time = Time(LocalTime.of(9,52))
+        val repeater1 = RepeaterOrDelay(mark = Repeater.CATCH_UP,value = 3,unit = RepeaterUnit.HOUR)
+        val repeater2 = null
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.Active(date = date,time = time, repeater1 = repeater1,repeater2 = repeater2))
+    }
+
+    @Test
+    fun `inactive timestamp with catch up repeater`() {
+        val content = "[2016-08-13 Sat 9:52 ++3h]"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time = Time(LocalTime.of(9,52))
+        val repeater1 = RepeaterOrDelay(mark = Repeater.CATCH_UP,value = 3,unit = RepeaterUnit.HOUR)
+        val repeater2 = null
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.Inactive(date = date,time = time, repeater1 = repeater1,repeater2 = repeater2))
+    }
+
+    @Test
+    fun `active timestamp with catch up repeater and all delay`() {
+        val content = "<2016-08-13 Sat 9:52 ++3h --3h>"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time = Time(LocalTime.of(9,52))
+        val repeater1 = RepeaterOrDelay(mark = Repeater.CATCH_UP,value = 3,unit = RepeaterUnit.HOUR)
+        val repeater2 = RepeaterOrDelay(mark = Repeater.ALL,value = 3,unit = RepeaterUnit.HOUR)
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.Active(date = date,time = time, repeater1 = repeater1,repeater2 = repeater2))
+    }
+
+    @Test
+    fun `inactive timestamp with catch up repeater and all delay`() {
+        val content = "[2016-08-13 Sat 9:52 ++3h --3h]"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time = Time(LocalTime.of(9,52))
+        val repeater1 = RepeaterOrDelay(mark = Repeater.CATCH_UP,value = 3,unit = RepeaterUnit.HOUR)
+        val repeater2 = RepeaterOrDelay(mark = Repeater.ALL,value = 3,unit = RepeaterUnit.HOUR)
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.Inactive(date = date,time = time, repeater1 = repeater1,repeater2 = repeater2))
+    }
+
+    @Test
+    fun `active time range with catch up repeater and all delay`() {
+        val content = "<2016-08-13 Sat 9:52-10:52 ++3h --3h>"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time1 = Time(LocalTime.of(9,52))
+        val time2 = Time(LocalTime.of(10,52))
+        val repeater1 = RepeaterOrDelay(mark = Repeater.CATCH_UP,value = 3,unit = RepeaterUnit.HOUR)
+        val repeater2 = RepeaterOrDelay(mark = Repeater.ALL,value = 3,unit = RepeaterUnit.HOUR)
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.ActiveRange(Timestamp.Active(date = date,time = time1, repeater1 = repeater1,repeater2 = repeater2),Timestamp.Active(date = date,time = time2, repeater1 = repeater1,repeater2 = repeater2)))
+    }
+
+    @Test
+    fun `inactive time range with catch up repeater and all delay`() {
+        val content = "[2016-08-13 Sat 9:52-10:52 ++3h --3h]"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time1 = Time(LocalTime.of(9,52))
+        val time2 = Time(LocalTime.of(10,52))
+        val repeater1 = RepeaterOrDelay(mark = Repeater.CATCH_UP,value = 3,unit = RepeaterUnit.HOUR)
+        val repeater2 = RepeaterOrDelay(mark = Repeater.ALL,value = 3,unit = RepeaterUnit.HOUR)
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.InactiveRange(Timestamp.Inactive(date = date,time = time1, repeater1 = repeater1,repeater2 = repeater2),Timestamp.Inactive(date = date,time = time2, repeater1 = repeater1,repeater2 = repeater2)))
+    }
+
+    @Test
+    fun `inactive total range with catch up repeater and all delay`() {
+        val content = "[2016-08-13 Sat 9:52 ++3h --3h]--[2016-08-13 Sat 10:52 ++3h --3h]"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time1 = Time(LocalTime.of(9,52))
+        val time2 = Time(LocalTime.of(10,52))
+        val repeater1 = RepeaterOrDelay(mark = Repeater.CATCH_UP,value = 3,unit = RepeaterUnit.HOUR)
+        val repeater2 = RepeaterOrDelay(mark = Repeater.ALL,value = 3,unit = RepeaterUnit.HOUR)
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.InactiveRange(Timestamp.Inactive(date = date,time = time1, repeater1 = repeater1,repeater2 = repeater2),Timestamp.Inactive(date = date,time = time2, repeater1 = repeater1,repeater2 = repeater2)))
+    }
+
+    @Test
+    fun `active total range with catch up repeater and all delay`() {
+        val content = "<2016-08-13 Sat 9:52 ++3h --3h>--<2016-08-13 Sat 10:52 ++3h --3h>"
+        val date = Date(LocalDate.of(2016,8,13))
+        val time1 = Time(LocalTime.of(9,52))
+        val time2 = Time(LocalTime.of(10,52))
+        val repeater1 = RepeaterOrDelay(mark = Repeater.CATCH_UP,value = 3,unit = RepeaterUnit.HOUR)
+        val repeater2 = RepeaterOrDelay(mark = Repeater.ALL,value = 3,unit = RepeaterUnit.HOUR)
+        assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.ActiveRange(Timestamp.Active(date = date,time = time1, repeater1 = repeater1,repeater2 = repeater2),Timestamp.Active(date = date,time = time2, repeater1 = repeater1,repeater2 = repeater2)))
     }
 }
