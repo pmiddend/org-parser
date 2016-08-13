@@ -403,4 +403,14 @@ class ParserKtTest {
         val repeater2 = RepeaterOrDelay(mark = Repeater.ALL,value = 3,unit = RepeaterUnit.HOUR)
         assertThat(timestampParser().parse("$content")).isEqualTo(Timestamp.ActiveRange(Timestamp.Active(date = date,time = time1, repeater1 = repeater1,repeater2 = repeater2),Timestamp.Active(date = date,time = time2, repeater1 = repeater1,repeater2 = repeater2)))
     }
+
+    @Test
+    fun `duration`() {
+        assertThat(durationParser().parse("9:56")).isEqualTo(Duration(9,56))
+    }
+
+    @Test
+    fun `clock`() {
+        assertThat(clockParser().parse("CLOCK: <2016-08-13 Fri 21:34> 02:00")).isEqualTo(Clock(duration = Duration(2,0),timestamp = Timestamp.Active(date = Date(LocalDate.of(2016,8,13)),time = Time(LocalTime.of(21,34)),repeater1 = null,repeater2 = null)))
+    }
 }

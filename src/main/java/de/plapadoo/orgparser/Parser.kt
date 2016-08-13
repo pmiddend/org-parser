@@ -280,3 +280,15 @@ fun timestampParser(): Parser<Timestamp> {
             inactive,
             active)
 }
+
+fun durationParser(): Parser<Duration> {
+    return Parsers.sequence(regexParser("[0-9]{1,2}", "duration hours").followedBy(charParser(':')), regexParser("[0-9]{2}", "duration minutes"), { hours, minutes -> Duration(hours.toInt(), minutes.toInt()) })
+}
+
+fun clockParser(): Parser<Clock> {
+    return Parsers.sequence(
+            stringParser("CLOCK: ").next(timestampParser()).followedBy(charParser(' ')),
+            durationParser(),
+            { timestamp, duration -> Clock(timestamp, duration) }
+    )
+}

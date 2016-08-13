@@ -201,3 +201,7 @@ sealed class Timestamp {
         }
     }
 }
+
+data class Duration(val hours : Int,val minutes : Int)
+
+data class Clock(val timestamp : Timestamp,val duration : Duration)
