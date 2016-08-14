@@ -578,4 +578,9 @@ class ParserKtTest {
         val line3Parsed = TableRow(indentation = 0, columns = listOf("cell3"))
         assertThat(tableParser().parse(line1+line2+line3+line4)).isEqualTo(Table(rows = listOf(line1Parsed,line2Parsed,line3Parsed),formulas = listOf(formula)))
     }
+
+    @Test
+    fun `comment line`() {
+        assertThat(commentLineParser().parse("# foo")).isEqualTo("foo");
+    }
 }

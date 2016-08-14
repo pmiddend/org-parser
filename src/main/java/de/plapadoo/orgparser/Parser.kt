@@ -371,3 +371,7 @@ fun tableParser(): Parser<Table> {
             tableFormulaParser().sepEndBy(charParser('\n')),
             {rows,formulas -> Table(rows,formulas)})
 }
+
+fun commentLineParser(): Parser<String> {
+    return stringParser("# ").next(regexParser("[^\\n]*","comment content"))
+}
