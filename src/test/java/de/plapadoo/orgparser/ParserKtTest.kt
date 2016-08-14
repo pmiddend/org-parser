@@ -554,4 +554,28 @@ class ParserKtTest {
         val content = "content"
         assertThat(listItemParser().parse("* [@1] [ ] $tag :: $content")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = Counter(numberValue = 1,charValue = null),checkbox = CheckboxType.EMPTY,tag = tag,content = content))
     }
+
+    @Test
+    fun `table with separator and normal lines without formulas`() {
+        val line1 = "|--------------|\n"
+        val line2 = "|cell1|cell2   \n"
+        val line3 = "|cell3|\n"
+        val line1Parsed = TableRow(indentation = 0, columns = null)
+        val line2Parsed = TableRow(indentation = 0, columns = listOf("cell1","cell2   "))
+        val line3Parsed = TableRow(indentation = 0, columns = listOf("cell3"))
+        assertThat(tableParser().parse(line1+line2+line3)).isEqualTo(Table(rows = listOf(line1Parsed,line2Parsed,line3Parsed),formulas = emptyList()))
+    }
+
+    @Test
+    fun `table with separator and normal lines with formula`() {
+        val formula = "sdfsfsd"
+        val line1 = "|--------------|\n"
+        val line2 = "|cell1|cell2   \n"
+        val line3 = "|cell3|\n"
+        val line4 = "#+TBLFM: $formula\n"
+        val line1Parsed = TableRow(indentation = 0, columns = null)
+        val line2Parsed = TableRow(indentation = 0, columns = listOf("cell1","cell2   "))
+        val line3Parsed = TableRow(indentation = 0, columns = listOf("cell3"))
+        assertThat(tableParser().parse(line1+line2+line3+line4)).isEqualTo(Table(rows = listOf(line1Parsed,line2Parsed,line3Parsed),formulas = listOf(formula)))
+    }
 }

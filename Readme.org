@@ -16,3 +16,4 @@ Not much here yet, I will update the readme according to how far I get with this
  - List items
  - Planning lines
  - Babel calls
+ - org tables (no table.el tables yet)

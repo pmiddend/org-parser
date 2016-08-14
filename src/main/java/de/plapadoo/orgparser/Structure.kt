@@ -241,3 +241,7 @@ enum class CheckboxType {
 }
 
 data class ListItem(val indentation : Int,val bulletType : Bullet,val counterSet : Counter?,val checkbox : CheckboxType?,val tag : String?,val content : String)
+
+data class TableRow(val indentation : Int,val columns : List<String>?)
+
+data class Table(val rows : List<TableRow>,val formulas : List<String>)

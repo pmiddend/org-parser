@@ -18,11 +18,16 @@ fun stringParser(s: String): Parser<String> = Patterns.string(s).toScanner("'$s'
 
 fun regexParser(@Language("RegExp") pattern: String, description: String): Parser<String> = Patterns.regex(pattern).toScanner(description).source()!!
 
-fun charParser(c: Char): Parser<String> = Patterns.isChar(c).toScanner("'$c'").source()!!
+fun charParser(c: Char): Parser<String> = Patterns.isChar(c).toScanner(if (c == '\n') "NEWLINE" else "'$c'").source()!!
 
 operator fun <T> Parser<T>.plus(o: Parser<T>): Parser<T> = Parsers.sequence(this, o)!!
 
 operator fun <T> Parser<T>.times(o: Parser<T>): Parser<T> = Parsers.or(this, o)!!
+
+// Helper function for jparsecs (type-safe) limit
+fun <A, B, C, D, E, F, T> sequence6(p1: Parser<A>, p2: Parser<B>, p3: Parser<C>, p4: Parser<D>, p5: Parser<E>, p6: Parser<F>, f: (A, B, C, D, E, F) -> T): Parser<T> {
+    return Sequence6Parser(p1, p2, p3, p4, p5, p6, f)
+}
 
 fun headlineParser(): Parser<Headline> {
     val headingStars = Patterns.isChar('*').many1().toScanner("heading stars").source().map { s -> s.length }
@@ -326,15 +331,15 @@ fun listItemParser(): Parser<ListItem> {
             counter.followedBy(charParser('.')).map { Bullet(type = BulletType.COUNTER_DOT, counter = it) },
             counter.followedBy(charParser(')')).map { Bullet(type = BulletType.COUNTER_PAREN, counter = it) })
     val counterSet = Parsers.between(stringParser("[@"), counter, charParser(']'))
-    val indentation = regexParser("\\s*", "indentation").map { it.length }
+    val indentation = regexParser("[ \\t]*", "indentation").map { it.length }
     val checkboxContent = Parsers.or(
             charParser(' ').map { CheckboxType.EMPTY },
             charParser('-').map { CheckboxType.HALF },
             charParser('X').map { CheckboxType.FULL })
     val checkbox = Parsers.between(charParser('['), checkboxContent, charParser(']'))
-    val tagText = regexParser(".*? ::\\s*", "tag text").map { it.substring(0,it.indexOf("::")-1) }
+    val tagText = regexParser(".*? ::[ \\t]*", "tag text").map { it.substring(0, it.indexOf("::") - 1) }
     val content = regexParser("[^\\n]*", "list item content")
-    val ws = regexParser("\\s*","white space")
+    val ws = regexParser("[ \\t]*", "white space")
     return sequence6(
             indentation,
             bullet.followedBy(charParser(' ')),
@@ -342,10 +347,27 @@ fun listItemParser(): Parser<ListItem> {
             checkbox.followedBy(ws).optional(),
             tagText.optional(),
             content,
-            {indentation,bullet,counterset,checkbox,tagtext,content -> ListItem(indentation,bullet,counterset,checkbox,tagtext,content)})
+            { indentation, bullet, counterset, checkbox, tagtext, content -> ListItem(indentation, bullet, counterset, checkbox, tagtext, content) })
 }
 
-// Helper function for jparsecs (type-safe) limit
-fun <A, B, C, D, E, F, T> sequence6(p1: Parser<A>, p2: Parser<B>, p3: Parser<C>, p4: Parser<D>, p5: Parser<E>, p6: Parser<F>, f: (A, B, C, D, E, F) -> T): Parser<T> {
-    return Sequence6Parser(p1,p2,p3,p4,p5,p6,f)
+fun tableRowParser(): Parser<TableRow> {
+    val indentation = regexParser("[ \\t]*", "indentation").map { it.length }
+    val tableCell = regexParser("[^\\n|]+", "table cell")
+    return Parsers.sequence(
+            indentation,
+            Parsers.or(
+                    regexParser("\\|-[^\\n]*", "table separator row").map { null },
+                    charParser('|').next(tableCell.sepEndBy1(charParser('|'))).map { it }),
+            { indentation, columns -> TableRow(indentation, columns) })
+}
+
+fun tableFormulaParser(): Parser<String> {
+    return regexParser("[ \\t]*","indentation").next(stringParser("#+TBLFM: ").next(regexParser("[^\\n]*","table formula")))
+}
+
+fun tableParser(): Parser<Table> {
+    return Parsers.sequence(
+            tableRowParser().sepEndBy1(charParser('\n')),
+            tableFormulaParser().sepEndBy(charParser('\n')),
+            {rows,formulas -> Table(rows,formulas)})
 }
