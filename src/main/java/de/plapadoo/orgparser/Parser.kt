@@ -289,6 +289,19 @@ fun clockParser(): Parser<Clock> {
     return Parsers.sequence(
             stringParser("CLOCK: ").next(timestampParser()).followedBy(charParser(' ')),
             durationParser(),
-            { timestamp, duration -> Clock(timestamp, duration) }
-    )
+            { timestamp, duration -> Clock(timestamp, duration) })
+}
+
+fun planningParser(): Parser<Planning> {
+    return Parsers.sequence(
+            Parsers.or(
+                    stringParser("DEADLINE").map { PlanningKeyword.DEADLINE },
+                    stringParser("SCHEDULED").map { PlanningKeyword.SCHEDULED },
+                    stringParser("CLOSED").map { PlanningKeyword.CLOSED }).followedBy(stringParser(": ")),
+            timestampParser(),
+            { keyword, timestamp -> Planning(keyword, timestamp) })
+}
+
+fun planningLineParser(): Parser<PlanningLine> {
+    return planningParser().sepBy(regexParser("[\\t ]+", "planning line separator")).map { PlanningLine(it) }
 }

@@ -413,4 +413,31 @@ class ParserKtTest {
     fun `clock`() {
         assertThat(clockParser().parse("CLOCK: <2016-08-13 Fri 21:34> 02:00")).isEqualTo(Clock(duration = Duration(2,0),timestamp = Timestamp.Active(date = Date(LocalDate.of(2016,8,13)),time = Time(LocalTime.of(21,34)),repeater1 = null,repeater2 = null)))
     }
+
+    @Test
+    fun `planning deadline`() {
+        assertThat(planningParser().parse("DEADLINE: <2016-08-13 Fri 21:34>")).isEqualTo(Planning(keyword = PlanningKeyword.DEADLINE,timestamp = Timestamp.Active(date = Date(LocalDate.of(2016,8,13)),time = Time(LocalTime.of(21,34)),repeater1 = null,repeater2 = null)));
+    }
+
+    @Test
+    fun `planning scheduled`() {
+        assertThat(planningParser().parse("SCHEDULED: <2016-08-13 Fri 21:34>")).isEqualTo(Planning(keyword = PlanningKeyword.SCHEDULED,timestamp = Timestamp.Active(date = Date(LocalDate.of(2016,8,13)),time = Time(LocalTime.of(21,34)),repeater1 = null,repeater2 = null)));
+    }
+
+    @Test
+    fun `planning closed`() {
+        assertThat(planningParser().parse("CLOSED: <2016-08-13 Fri 21:34>")).isEqualTo(Planning(keyword = PlanningKeyword.CLOSED,timestamp = Timestamp.Active(date = Date(LocalDate.of(2016,8,13)),time = Time(LocalTime.of(21,34)),repeater1 = null,repeater2 = null)));
+    }
+
+    @Test
+    fun `active timestamp followed by space`() {
+        val timestamp = Timestamp.Active(date = Date(LocalDate.of(2016, 8, 13)), time = Time(LocalTime.of(21, 34)), repeater1 = null, repeater2 = null)
+        assertThat(timestampParser().followedBy(stringParser(" ")).parse("<2016-08-13 Fri 21:34> ")).isEqualTo(timestamp);
+    }
+
+    @Test
+    fun `planning line with everything in it`() {
+        val timestamp = Timestamp.Active(date = Date(LocalDate.of(2016, 8, 13)), time = Time(LocalTime.of(21, 34)), repeater1 = null, repeater2 = null)
+        assertThat(planningLineParser().parse("CLOSED: <2016-08-13 Fri 21:34> SCHEDULED: <2016-08-13 Fri 21:34> DEADLINE: <2016-08-13 Fri 21:34>")).isEqualTo(PlanningLine(plannings = listOf(Planning(keyword = PlanningKeyword.CLOSED,timestamp = timestamp),Planning(keyword = PlanningKeyword.SCHEDULED,timestamp = timestamp),Planning(keyword = PlanningKeyword.DEADLINE,timestamp = timestamp))))
+    }
 }

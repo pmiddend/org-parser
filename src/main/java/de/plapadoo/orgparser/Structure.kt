@@ -205,3 +205,13 @@ sealed class Timestamp {
 data class Duration(val hours : Int,val minutes : Int)
 
 data class Clock(val timestamp : Timestamp,val duration : Duration)
+
+enum class PlanningKeyword {
+    DEADLINE,
+    SCHEDULED,
+    CLOSED
+}
+
+data class Planning(val keyword : PlanningKeyword,val timestamp : Timestamp)
+
+data class PlanningLine(val plannings : List<Planning>)
