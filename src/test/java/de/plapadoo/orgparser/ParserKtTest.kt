@@ -581,6 +581,29 @@ class ParserKtTest {
 
     @Test
     fun `comment line`() {
-        assertThat(commentLineParser().parse("# foo")).isEqualTo("foo");
+        assertThat(commentLineParser().parse("# foo")).isEqualTo("foo")
+    }
+
+    @Test
+    fun `fixed width line`() {
+        assertThat(fixedWidthLineParser().parse(": foo")).isEqualTo("foo")
+    }
+
+    @Test
+    fun `horizontal rule line`() {
+        assertThat(horizontalRuleLineParser().parse("------")).isEqualTo("------")
+    }
+
+    @Test
+    fun `keyword`() {
+        assertThat(keywordParser().parse("#+KEY: VALUE")).isEqualTo(Keyword(key = "KEY",value = "VALUE"))
+    }
+
+    @Test
+    fun `latex environment`() {
+        val line1 = "   \\begin{foo}   \n"
+        val line2 = "some content\n"
+        val line3 = "\\end{foo} \n"
+        assertThat(latexEnvironmentParser().parse(line1+line2+line3)).isEqualTo(LatexEnvironment(name="foo",content="some content\n"))
     }
 }

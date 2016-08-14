@@ -7,6 +7,7 @@ import org.codehaus.jparsec.pattern.Patterns
 import org.intellij.lang.annotations.Language
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.regex.Pattern
 
 /**
  * Created by philipp on 8/7/16.
@@ -16,7 +17,7 @@ val nl: Parser<String> = Patterns.isChar('\n').toScanner("NEWLINE").source()!!
 
 fun stringParser(s: String): Parser<String> = Patterns.string(s).toScanner("'$s'").source()!!
 
-fun regexParser(@Language("RegExp") pattern: String, description: String): Parser<String> = Patterns.regex(pattern).toScanner(description).source()!!
+fun regexParser(@Language("RegExp") pattern: String, description: String): Parser<String> = Patterns.regex(Pattern.compile(pattern,Pattern.DOTALL)).toScanner(description).source()!!
 
 fun charParser(c: Char): Parser<String> = Patterns.isChar(c).toScanner(if (c == '\n') "NEWLINE" else "'$c'").source()!!
 
@@ -362,16 +363,43 @@ fun tableRowParser(): Parser<TableRow> {
 }
 
 fun tableFormulaParser(): Parser<String> {
-    return regexParser("[ \\t]*","indentation").next(stringParser("#+TBLFM: ").next(regexParser("[^\\n]*","table formula")))
+    return regexParser("[ \\t]*", "indentation").next(stringParser("#+TBLFM: ").next(regexParser("[^\\n]*", "table formula")))
 }
 
 fun tableParser(): Parser<Table> {
     return Parsers.sequence(
             tableRowParser().sepEndBy1(charParser('\n')),
             tableFormulaParser().sepEndBy(charParser('\n')),
-            {rows,formulas -> Table(rows,formulas)})
+            { rows, formulas -> Table(rows, formulas) })
 }
 
 fun commentLineParser(): Parser<String> {
-    return stringParser("# ").next(regexParser("[^\\n]*","comment content"))
+    return stringParser("# ").next(regexParser("[^\\n]*", "comment content"))
+}
+
+fun fixedWidthLineParser(): Parser<String> {
+    return stringParser(": ").next(regexParser("[^\\n]*", "fixed width line content"))
+}
+
+fun horizontalRuleLineParser(): Parser<String> {
+    return regexParser("-{5,}", "horizontal rule")
+}
+
+fun keywordParser(): Parser<Keyword> {
+    return Parsers.sequence(
+            stringParser("#+").next(regexParser("[^:]+", "keyword key").followedBy(stringParser(": "))),
+            regexParser("[^\n]*", "keyword content"),
+            { key, value -> Keyword(key, value) })
+}
+
+fun latexEnvironmentParser(): Parser<LatexEnvironment> {
+    // This is very poorly executed.
+    val begin = regexParser("[ \\t]*\\\\begin\\{","latex environment begin")
+    val beginClose = regexParser("\\}\\s*\\n","latex environment begin close")
+    val content = regexParser(".*?\\\\end\\{[^}]+\\}\\s*\\n","latex environment content")
+    return Parsers.sequence(
+            begin.next(regexParser("[^}]+","latex environment name")).followedBy(beginClose),
+            content,
+            {name,content -> LatexEnvironment(name,content.substring(0,content.indexOf("\\end{$name}")))}
+    )
 }

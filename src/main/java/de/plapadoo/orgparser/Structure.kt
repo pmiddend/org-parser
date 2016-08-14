@@ -245,3 +245,7 @@ data class ListItem(val indentation : Int,val bulletType : Bullet,val counterSet
 data class TableRow(val indentation : Int,val columns : List<String>?)
 
 data class Table(val rows : List<TableRow>,val formulas : List<String>)
+
+data class Keyword(val key : String,val value : String)
+
+data class LatexEnvironment(val name : String,val content : String)
