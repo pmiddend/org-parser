@@ -129,6 +129,14 @@ fun footnoteParser(): Parser<Footnote> {
             { label, content -> Footnote(label, content) })
 }
 
+fun babelCallParser(): Parser<BabelCall> {
+    val begin = stringParser("#+CALL: ")
+    return Parsers.sequence(
+            begin,
+            regexParser("[^\\n]+","babel call value").optional(),
+            {begin,value -> BabelCall(value)})
+}
+
 fun affiliatedKeywordParser(): Parser<AffiliatedKeyword> {
     val begin = stringParser("#+")
     val caption = stringParser("CAPTION")

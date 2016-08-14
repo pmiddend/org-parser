@@ -440,4 +440,15 @@ class ParserKtTest {
         val timestamp = Timestamp.Active(date = Date(LocalDate.of(2016, 8, 13)), time = Time(LocalTime.of(21, 34)), repeater1 = null, repeater2 = null)
         assertThat(planningLineParser().parse("CLOSED: <2016-08-13 Fri 21:34> SCHEDULED: <2016-08-13 Fri 21:34> DEADLINE: <2016-08-13 Fri 21:34>")).isEqualTo(PlanningLine(plannings = listOf(Planning(keyword = PlanningKeyword.CLOSED,timestamp = timestamp),Planning(keyword = PlanningKeyword.SCHEDULED,timestamp = timestamp),Planning(keyword = PlanningKeyword.DEADLINE,timestamp = timestamp))))
     }
+
+    @Test
+    fun `babel call without value`() {
+        assertThat(babelCallParser().parse("#+CALL: ")).isEqualTo(BabelCall(value = null))
+    }
+
+    @Test
+    fun `babel call with value`() {
+        val foo = "foo"
+        assertThat(babelCallParser().parse("#+CALL: $foo")).isEqualTo(BabelCall(value = foo))
+    }
 }

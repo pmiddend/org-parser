@@ -215,3 +215,5 @@ enum class PlanningKeyword {
 data class Planning(val keyword : PlanningKeyword,val timestamp : Timestamp)
 
 data class PlanningLine(val plannings : List<Planning>)
+
+data class BabelCall(val value : String?)
