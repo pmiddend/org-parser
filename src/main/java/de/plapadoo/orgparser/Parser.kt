@@ -2,6 +2,7 @@ package de.plapadoo.orgparser
 
 import org.codehaus.jparsec.Parser
 import org.codehaus.jparsec.Parsers
+import org.codehaus.jparsec.Sequence6Parser
 import org.codehaus.jparsec.pattern.Patterns
 import org.intellij.lang.annotations.Language
 import java.time.LocalDate
@@ -133,8 +134,8 @@ fun babelCallParser(): Parser<BabelCall> {
     val begin = stringParser("#+CALL: ")
     return Parsers.sequence(
             begin,
-            regexParser("[^\\n]+","babel call value").optional(),
-            {begin,value -> BabelCall(value)})
+            regexParser("[^\\n]+", "babel call value").optional(),
+            { begin, value -> BabelCall(value) })
 }
 
 fun affiliatedKeywordParser(): Parser<AffiliatedKeyword> {
@@ -312,4 +313,39 @@ fun planningParser(): Parser<Planning> {
 
 fun planningLineParser(): Parser<PlanningLine> {
     return planningParser().sepBy(regexParser("[\\t ]+", "planning line separator")).map { PlanningLine(it) }
+}
+
+fun listItemParser(): Parser<ListItem> {
+    val counter = Parsers.or(
+            regexParser("[0-9]+", "list numeric counter").map { it.toInt() }.map { Counter(numberValue = it, charValue = null) },
+            regexParser("[a-zA-Z]", "list alphabetic counter").map { it[0] }.map { Counter(numberValue = null, charValue = it) })
+    val bullet = Parsers.or(
+            charParser('*').map { asterisk() },
+            charParser('-').map { hyphen() },
+            charParser('+').map { plus() },
+            counter.followedBy(charParser('.')).map { Bullet(type = BulletType.COUNTER_DOT, counter = it) },
+            counter.followedBy(charParser(')')).map { Bullet(type = BulletType.COUNTER_PAREN, counter = it) })
+    val counterSet = Parsers.between(stringParser("[@"), counter, charParser(']'))
+    val indentation = regexParser("\\s*", "indentation").map { it.length }
+    val checkboxContent = Parsers.or(
+            charParser(' ').map { CheckboxType.EMPTY },
+            charParser('-').map { CheckboxType.HALF },
+            charParser('X').map { CheckboxType.FULL })
+    val checkbox = Parsers.between(charParser('['), checkboxContent, charParser(']'))
+    val tagText = regexParser(".*? ::\\s*", "tag text").map { it.substring(0,it.indexOf("::")-1) }
+    val content = regexParser("[^\\n]*", "list item content")
+    val ws = regexParser("\\s*","white space")
+    return sequence6(
+            indentation,
+            bullet.followedBy(charParser(' ')),
+            counterSet.followedBy(ws).optional(),
+            checkbox.followedBy(ws).optional(),
+            tagText.optional(),
+            content,
+            {indentation,bullet,counterset,checkbox,tagtext,content -> ListItem(indentation,bullet,counterset,checkbox,tagtext,content)})
+}
+
+// Helper function for jparsecs (type-safe) limit
+fun <A, B, C, D, E, F, T> sequence6(p1: Parser<A>, p2: Parser<B>, p3: Parser<C>, p4: Parser<D>, p5: Parser<E>, p6: Parser<F>, f: (A, B, C, D, E, F) -> T): Parser<T> {
+    return Sequence6Parser(p1,p2,p3,p4,p5,p6,f)
 }

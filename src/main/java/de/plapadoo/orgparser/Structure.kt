@@ -217,3 +217,27 @@ data class Planning(val keyword : PlanningKeyword,val timestamp : Timestamp)
 data class PlanningLine(val plannings : List<Planning>)
 
 data class BabelCall(val value : String?)
+
+enum class BulletType {
+    ASTERISK,
+    HYPHEN,
+    PLUS,
+    COUNTER_DOT,
+    COUNTER_PAREN
+}
+
+data class Bullet(val type : BulletType,val counter : Counter?)
+
+fun asterisk() = Bullet(type = BulletType.ASTERISK,counter = null)
+fun hyphen() = Bullet(type = BulletType.HYPHEN,counter = null)
+fun plus() = Bullet(type = BulletType.PLUS,counter = null)
+
+data class Counter(val numberValue : Int?,val charValue : Char?)
+
+enum class CheckboxType {
+    EMPTY,
+    HALF,
+    FULL
+}
+
+data class ListItem(val indentation : Int,val bulletType : Bullet,val counterSet : Counter?,val checkbox : CheckboxType?,val tag : String?,val content : String)

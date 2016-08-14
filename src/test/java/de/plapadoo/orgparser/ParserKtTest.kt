@@ -451,4 +451,107 @@ class ParserKtTest {
         val foo = "foo"
         assertThat(babelCallParser().parse("#+CALL: $foo")).isEqualTo(BabelCall(value = foo))
     }
+
+    @Test
+    fun `asterisk list item without indentation and without anything else`() {
+        assertThat(listItemParser().parse("* ")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = null,checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `hypen list item without indentation and without anything else`() {
+        assertThat(listItemParser().parse("- ")).isEqualTo(ListItem(indentation = 0,bulletType = hyphen(),counterSet = null,checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `plus list item without indentation and without anything else`() {
+        assertThat(listItemParser().parse("+ ")).isEqualTo(ListItem(indentation = 0,bulletType = plus(),counterSet = null,checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with indentation and without anything else`() {
+        assertThat(listItemParser().parse("  * ")).isEqualTo(ListItem(indentation = 2,bulletType = asterisk(),counterSet = null,checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with content`() {
+        val content = "content"
+        assertThat(listItemParser().parse("* $content")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = null,checkbox = null,tag = null,content = content))
+    }
+
+    @Test
+    fun `numeric counter dot list item without content`() {
+        assertThat(listItemParser().parse("1. ")).isEqualTo(ListItem(indentation = 0,bulletType = Bullet(type = BulletType.COUNTER_DOT,counter = Counter(numberValue = 1,charValue = null)),counterSet = null,checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `alphabetic counter dot list item without content`() {
+        assertThat(listItemParser().parse("a. ")).isEqualTo(ListItem(indentation = 0,bulletType = Bullet(type = BulletType.COUNTER_DOT,counter = Counter(numberValue = null,charValue = 'a')),counterSet = null,checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `alphabetic counter paren list item without content`() {
+        assertThat(listItemParser().parse("a) ")).isEqualTo(ListItem(indentation = 0,bulletType = Bullet(type = BulletType.COUNTER_PAREN,counter = Counter(numberValue = null,charValue = 'a')),counterSet = null,checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `numeric counter paren list item without content`() {
+        assertThat(listItemParser().parse("1) ")).isEqualTo(ListItem(indentation = 0,bulletType = Bullet(type = BulletType.COUNTER_PAREN,counter = Counter(numberValue = 1,charValue = null)),counterSet = null,checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with numeric counter set`() {
+        assertThat(listItemParser().parse("* [@1]")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = Counter(numberValue = 1,charValue = null),checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with alphabetic counter set`() {
+        assertThat(listItemParser().parse("* [@a]")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = Counter(numberValue = null,charValue = 'a'),checkbox = null,tag = null,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with empty check box`() {
+        assertThat(listItemParser().parse("* [ ]")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = null,checkbox = CheckboxType.EMPTY,tag = null,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with half check box`() {
+        assertThat(listItemParser().parse("* [-]")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = null,checkbox = CheckboxType.HALF,tag = null,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with full check box`() {
+        assertThat(listItemParser().parse("* [X]")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = null,checkbox = CheckboxType.FULL,tag = null,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with counter set and empty check box`() {
+        assertThat(listItemParser().parse("* [@1] [ ]")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = Counter(numberValue = 1,charValue = null),checkbox = CheckboxType.EMPTY,tag = null,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with tag text`() {
+        val tag = "foo"
+        assertThat(listItemParser().parse("* $tag :: ")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = null,checkbox = null,tag = tag,content = ""))
+    }
+
+    @Test
+    fun `asterisk list item with tag text and content`() {
+        val tag = "foo"
+        val content = "content"
+        assertThat(listItemParser().parse("* $tag :: $content")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = null,checkbox = null,tag = tag,content = content))
+    }
+
+    @Test
+    fun `asterisk list item with tag text and content and counter set`() {
+        val tag = "foo"
+        val content = "content"
+        assertThat(listItemParser().parse("* [@1] $tag :: $content")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = Counter(numberValue = 1,charValue = null),checkbox = null,tag = tag,content = content))
+    }
+
+    @Test
+    fun `asterisk list item with tag text and content and counter set and empty checkbox`() {
+        val tag = "foo"
+        val content = "content"
+        assertThat(listItemParser().parse("* [@1] [ ] $tag :: $content")).isEqualTo(ListItem(indentation = 0,bulletType = asterisk(),counterSet = Counter(numberValue = 1,charValue = null),checkbox = CheckboxType.EMPTY,tag = tag,content = content))
+    }
 }
