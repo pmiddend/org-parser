@@ -13,3 +13,6 @@ Not much here yet, I will update the readme according to how far I get with this
  - Affiliated Keywords
  - Active and incative timestamp parsing with repeaters and ranges
  - Clocks
+ - List items
+ - Planning lines
+ - Babel calls
