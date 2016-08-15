@@ -22,3 +22,4 @@ Not much here yet, I will update the readme according to how far I get with this
  - Horizontal rule lines
  - Keywords
  - LaTeX environments (no nesting support, though)
+ - Export snippets

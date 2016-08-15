@@ -606,4 +606,11 @@ class ParserKtTest {
         val line3 = "\\end{foo} \n"
         assertThat(latexEnvironmentParser().parse(line1+line2+line3)).isEqualTo(LatexEnvironment(name="foo",content="some content\n"))
     }
+
+    @Test
+    fun `export snippet`() {
+        val name = "name"
+        val value = "value"
+        assertThat(exportSnippetParser().parse("@@$name:$value@@")).isEqualTo(ExportSnippet(name=name,value=value))
+    }
 }

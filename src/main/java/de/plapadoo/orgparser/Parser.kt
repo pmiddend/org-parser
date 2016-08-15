@@ -403,3 +403,11 @@ fun latexEnvironmentParser(): Parser<LatexEnvironment> {
             {name,content -> LatexEnvironment(name,content.substring(0,content.indexOf("\\end{$name}")))}
     )
 }
+
+fun exportSnippetParser(): Parser<ExportSnippet> {
+    return Parsers.sequence(
+            stringParser("@@").next(regexParser("[^:]*","export snippet name")).followedBy(charParser(':')),
+            regexParser("([^@]|@(?!@))*","export snippet value").followedBy(stringParser("@@")),
+            {name,value -> ExportSnippet(name,value)}
+    );
+}

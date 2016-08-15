@@ -249,3 +249,5 @@ data class Table(val rows : List<TableRow>,val formulas : List<String>)
 data class Keyword(val key : String,val value : String)
 
 data class LatexEnvironment(val name : String,val content : String)
+
+data class ExportSnippet(val name:String,val value : String)
