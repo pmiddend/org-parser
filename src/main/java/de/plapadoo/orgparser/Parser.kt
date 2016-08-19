@@ -2,8 +2,8 @@ package de.plapadoo.orgparser
 
 import org.codehaus.jparsec.Parser
 import org.codehaus.jparsec.Parsers
-import org.codehaus.jparsec.Sequence6Parser
 import org.codehaus.jparsec.pattern.Patterns
+import org.codehaus.jparsec.sequence6
 import org.intellij.lang.annotations.Language
 import java.time.LocalDate
 import java.time.LocalTime
@@ -24,11 +24,6 @@ fun charParser(c: Char): Parser<String> = Patterns.isChar(c).toScanner(if (c == 
 operator fun <T> Parser<T>.plus(o: Parser<T>): Parser<T> = Parsers.sequence(this, o)!!
 
 operator fun <T> Parser<T>.times(o: Parser<T>): Parser<T> = Parsers.or(this, o)!!
-
-// Helper function for jparsecs (type-safe) limit
-fun <A, B, C, D, E, F, T> sequence6(p1: Parser<A>, p2: Parser<B>, p3: Parser<C>, p4: Parser<D>, p5: Parser<E>, p6: Parser<F>, f: (A, B, C, D, E, F) -> T): Parser<T> {
-    return Sequence6Parser(p1, p2, p3, p4, p5, p6, f)
-}
 
 fun headlineParser(): Parser<Headline> {
     val headingStars = Patterns.isChar('*').many1().toScanner("heading stars").source().map { s -> s.length }
@@ -409,5 +404,5 @@ fun exportSnippetParser(): Parser<ExportSnippet> {
             stringParser("@@").next(regexParser("[^:]*","export snippet name")).followedBy(charParser(':')),
             regexParser("([^@]|@(?!@))*","export snippet value").followedBy(stringParser("@@")),
             {name,value -> ExportSnippet(name,value)}
-    );
+    )
 }

@@ -51,3 +51,8 @@ class Sequence6Parser<A, B, C, D, E, F, T>(
         return f.toString()
     }
 }
+
+// Helper function for jparsecs (type-safe) limit
+fun <A, B, C, D, E, F, T> sequence6(p1: Parser<A>, p2: Parser<B>, p3: Parser<C>, p4: Parser<D>, p5: Parser<E>, p6: Parser<F>, f: (A, B, C, D, E, F) -> T): Parser<T> {
+    return Sequence6Parser(p1, p2, p3, p4, p5, p6, f)
+}
