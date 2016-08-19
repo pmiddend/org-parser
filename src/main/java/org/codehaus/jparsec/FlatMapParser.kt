@@ -1,6 +1,6 @@
 package org.codehaus.jparsec
 
-class FlatMapParser<T,U>(
+/*class FlatMapParser<T,U>(
         private val p: Parser<T>,
         private val f: (T) -> Parser<U>) : Parser<U>() {
     internal override fun apply(ctxt: ParseContext): Boolean {
@@ -20,4 +20,4 @@ class FlatMapParser<T,U>(
     }
 }
 
-fun <T,U>flatMap(p: Parser<T>,f: (T) -> Parser<U>) = FlatMapParser(p,f)
+fun <T,U>flatMap(p: Parser<T>,f: (T) -> Parser<U>) = FlatMapParser(p,f)*/

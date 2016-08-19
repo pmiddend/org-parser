@@ -25,22 +25,22 @@ class Sequence6Parser<A, B, C, D, E, F, T>(
         private val p6: Parser<F>,
         private val f: (A, B, C, D, E, F) -> T) : Parser<T>() {
     internal override fun apply(ctxt: ParseContext): Boolean {
-        val r1 = p1.run(ctxt)
+        val r1 = p1.apply(ctxt)
         if (!r1) return false
         val o1 = p1.getReturn(ctxt)
-        val r2 = p2.run(ctxt)
+        val r2 = p2.apply(ctxt)
         if (!r2) return false
         val o2 = p2.getReturn(ctxt)
-        val r3 = p3.run(ctxt)
+        val r3 = p3.apply(ctxt)
         if (!r3) return false
         val o3 = p3.getReturn(ctxt)
-        val r4 = p4.run(ctxt)
+        val r4 = p4.apply(ctxt)
         if (!r4) return false
         val o4 = p4.getReturn(ctxt)
-        val r5 = p5.run(ctxt)
+        val r5 = p5.apply(ctxt)
         if (!r5) return false
         val o5 = p5.getReturn(ctxt)
-        val r6 = p6.run(ctxt)
+        val r6 = p6.apply(ctxt)
         if (!r6) return false
         val o6 = p6.getReturn(ctxt)
         ctxt.result = f(o1, o2, o3, o4, o5,o6)

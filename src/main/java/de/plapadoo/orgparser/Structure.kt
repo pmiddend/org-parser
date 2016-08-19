@@ -1,5 +1,6 @@
 package de.plapadoo.orgparser
 
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -7,52 +8,56 @@ import java.time.LocalTime
  * Created by philipp on 8/7/16.
  */
 data class Headline(
-        val level : Int,
-        val keyword : String?,
-        val priority : Char?,
-        val title : String,
-        val tags : List<String>)
+        val level: Int,
+        val keyword: String?,
+        val priority: Char?,
+        val title: String,
+        val tags: List<String>) {
+    fun toOrg(): String {
+        return "*".repeat(level) + (if (keyword != null) " $keyword" else "") + (if (priority != null) "#[$priority]" else "") + " $title" + (if (tags.isNotEmpty()) "\t" + tags.fold(":", { prev, tag -> "$prev$tag:" }) else "")
+    }
+}
 
 data class GreaterBlock(
-        val type : String,
-        val parameters : String?,
-        val content : List<String>)
+        val type: String,
+        val parameters: String?,
+        val content: List<String>)
 
 data class DynamicBlock(
-        val type : String,
-        val parameters : String?,
-        val content : List<String>)
+        val type: String,
+        val parameters: String?,
+        val content: List<String>)
 
 data class Property(
-        val name : String,
-        val value : String?,
-        val plus : Boolean)
+        val name: String,
+        val value: String?,
+        val plus: Boolean)
 
 data class PropertyDrawer(
-        val properties : List<Property>)
+        val properties: List<Property>)
 
 data class Drawer(
-        val name : String,
-        val content : String)
+        val name: String,
+        val content: String)
 
 data class FootnoteLabel(
-        val label : String,
-        val numeric : Boolean)
+        val label: String,
+        val numeric: Boolean)
 
 data class Footnote(
-        val label : FootnoteLabel,
-        val content : String)
+        val label: FootnoteLabel,
+        val content: String)
 
 data class AffiliatedKeyword(
-        val key : String,
-        val optional : String?,
-        val value : String)
+        val key: String,
+        val optional: String?,
+        val value: String)
 
 data class Date(
-        val date : LocalDate)
+        val date: LocalDate)
 
 data class Time(
-        val time : LocalTime)
+        val time: LocalTime)
 
 enum class Repeater {
     CUMULATE,
@@ -71,13 +76,36 @@ enum class RepeaterUnit {
 }
 
 data class RepeaterOrDelay(
-        val mark : Repeater,
-        val value : Int,
-        val unit : RepeaterUnit)
+        val mark: Repeater,
+        val value: Int,
+        val unit: RepeaterUnit) {
+    fun toOrg(): String {
+        val mark = when(mark) {
+            Repeater.CUMULATE -> "+"
+            Repeater.CATCH_UP -> "++"
+            Repeater.RESTART -> ".+"
+            Repeater.ALL -> "-"
+            Repeater.FIRST -> "--"
+        }
+        val unit = when(unit) {
+            RepeaterUnit.HOUR -> "h"
+            RepeaterUnit.DAY -> "d"
+            RepeaterUnit.WEEK -> "w"
+            RepeaterUnit.MONTH -> "m"
+            RepeaterUnit.YEAR -> "y"
+        }
+
+        return mark + value + unit
+    }
+}
 
 sealed class Timestamp {
-    class Sexp(val descriptor : String) : Timestamp() {
-        override fun equals(other: Any?): Boolean{
+    class Sexp(val descriptor: String) : Timestamp() {
+        override fun toOrg(): String {
+            return "<%%$descriptor>"
+        }
+
+        override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
 
@@ -88,16 +116,28 @@ sealed class Timestamp {
             return true
         }
 
-        override fun hashCode(): Int{
+        override fun hashCode(): Int {
             return descriptor.hashCode()
         }
 
-        override fun toString(): String{
+        override fun toString(): String {
             return "Sexp(descriptor='$descriptor')"
         }
     }
 
-    class Active(val date : Date,val time : Time,val repeater1 : RepeaterOrDelay?,val repeater2 : RepeaterOrDelay?) : Timestamp() {
+    class Active(val date: Date, val time: Time?, val repeater1: RepeaterOrDelay?, val repeater2: RepeaterOrDelay?) : Timestamp() {
+        override fun toOrg(): String {
+            val time = if (time != null) " ${time.time.hour}:${time.time.minute} " else ""
+            val repeater1 = if (repeater1 != null) repeater1.toOrg() else ""
+            val repeater2 = if (repeater2 != null) repeater2.toOrg() else ""
+            return "<${date.date.year}-${date.date.monthValue}-${date.date.dayOfMonth} ${date.date.dayOfWeek.toOrg()}$time$repeater1$repeater2>"
+        }
+
+
+        override fun toString(): String {
+            return "Active(date=$date, time=$time, repeater1=$repeater1, repeater2=$repeater2)"
+        }
+
         override fun equals(other: Any?): Boolean{
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
@@ -114,18 +154,25 @@ sealed class Timestamp {
 
         override fun hashCode(): Int{
             var result = date.hashCode()
-            result = 31 * result + time.hashCode()
+            result = 31 * result + (time?.hashCode() ?: 0)
             result = 31 * result + (repeater1?.hashCode() ?: 0)
             result = 31 * result + (repeater2?.hashCode() ?: 0)
             return result
         }
-
-        override fun toString(): String{
-            return "Active(date=$date, time=$time, repeater1=$repeater1, repeater2=$repeater2)"
-        }
     }
 
-    class Inactive(val date : Date,val time : Time,val repeater1 : RepeaterOrDelay?,val repeater2 : RepeaterOrDelay?) : Timestamp() {
+    class Inactive(val date: Date, val time: Time?, val repeater1: RepeaterOrDelay?, val repeater2: RepeaterOrDelay?) : Timestamp() {
+        override fun toOrg(): String {
+            val time = if (time != null) " ${time.time.hour}:${time.time.minute} " else ""
+            val repeater1 = if (repeater1 != null) repeater1.toOrg() else ""
+            val repeater2 = if (repeater2 != null) repeater2.toOrg() else ""
+            return "[${date.date.year}-${date.date.monthValue}-${date.date.dayOfMonth} ${date.date.dayOfWeek.toOrg()}$time$repeater1$repeater2]"
+        }
+
+        override fun toString(): String {
+            return "Inactive(date=$date, time=$time, repeater1=$repeater1, repeater2=$repeater2)"
+        }
+
         override fun equals(other: Any?): Boolean{
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
@@ -142,19 +189,19 @@ sealed class Timestamp {
 
         override fun hashCode(): Int{
             var result = date.hashCode()
-            result = 31 * result + time.hashCode()
+            result = 31 * result + (time?.hashCode() ?: 0)
             result = 31 * result + (repeater1?.hashCode() ?: 0)
             result = 31 * result + (repeater2?.hashCode() ?: 0)
             return result
         }
-
-        override fun toString(): String{
-            return "Inactive(date=$date, time=$time, repeater1=$repeater1, repeater2=$repeater2)"
-        }
     }
 
-    class ActiveRange(val from : Active,val to : Active) : Timestamp() {
-        override fun equals(other: Any?): Boolean{
+    class ActiveRange(val from: Active, val to: Active) : Timestamp() {
+        override fun toOrg(): String {
+            return "${from.toOrg()}--${to.toOrg()}"
+        }
+
+        override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
 
@@ -166,19 +213,23 @@ sealed class Timestamp {
             return true
         }
 
-        override fun hashCode(): Int{
+        override fun hashCode(): Int {
             var result = from.hashCode()
             result = 31 * result + to.hashCode()
             return result
         }
 
-        override fun toString(): String{
+        override fun toString(): String {
             return "ActiveRange(from=$from, to=$to)"
         }
     }
 
-    class InactiveRange(val from : Inactive,val to : Inactive) : Timestamp() {
-        override fun equals(other: Any?): Boolean{
+    class InactiveRange(val from: Inactive, val to: Inactive) : Timestamp() {
+        override fun toOrg(): String {
+            return "${from.toOrg()}--${to.toOrg()}"
+        }
+
+        override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
 
@@ -190,21 +241,35 @@ sealed class Timestamp {
             return true
         }
 
-        override fun hashCode(): Int{
+        override fun hashCode(): Int {
             var result = from.hashCode()
             result = 31 * result + to.hashCode()
             return result
         }
 
-        override fun toString(): String{
+        override fun toString(): String {
             return "InactiveRange(from=$from, to=$to)"
         }
     }
+
+    abstract fun toOrg(): String
 }
 
-data class Duration(val hours : Int,val minutes : Int)
+fun DayOfWeek.toOrg(): String {
+    return when(this) {
+        DayOfWeek.MONDAY -> "Mon"
+        DayOfWeek.TUESDAY -> "Tue"
+        DayOfWeek.WEDNESDAY -> "Wed"
+        DayOfWeek.THURSDAY -> "Thu"
+        DayOfWeek.FRIDAY -> "Fri"
+        DayOfWeek.SATURDAY -> "Sat"
+        DayOfWeek.SUNDAY -> "Sun"
+    }
+}
 
-data class Clock(val timestamp : Timestamp,val duration : Duration)
+data class Duration(val hours: Int, val minutes: Int)
+
+data class Clock(val timestamp: Timestamp, val duration: Duration)
 
 enum class PlanningKeyword {
     DEADLINE,
@@ -212,11 +277,19 @@ enum class PlanningKeyword {
     CLOSED
 }
 
-data class Planning(val keyword : PlanningKeyword,val timestamp : Timestamp)
+data class Planning(val keyword: PlanningKeyword, val timestamp: Timestamp) {
+    fun toOrg(): String {
+        return "$keyword: ${timestamp.toOrg()}"
+    }
+}
 
-data class PlanningLine(val plannings : List<Planning>)
+data class PlanningLine(val plannings: List<Planning>) {
+    fun toOrg(): String {
+        return plannings.fold("", { prev, planning -> "$prev ${planning.toOrg()}" })
+    }
+}
 
-data class BabelCall(val value : String?)
+data class BabelCall(val value: String?)
 
 enum class BulletType {
     ASTERISK,
@@ -226,13 +299,13 @@ enum class BulletType {
     COUNTER_PAREN
 }
 
-data class Bullet(val type : BulletType,val counter : Counter?)
+data class Bullet(val type: BulletType, val counter: Counter?)
 
-fun asterisk() = Bullet(type = BulletType.ASTERISK,counter = null)
-fun hyphen() = Bullet(type = BulletType.HYPHEN,counter = null)
-fun plus() = Bullet(type = BulletType.PLUS,counter = null)
+fun asterisk() = Bullet(type = BulletType.ASTERISK, counter = null)
+fun hyphen() = Bullet(type = BulletType.HYPHEN, counter = null)
+fun plus() = Bullet(type = BulletType.PLUS, counter = null)
 
-data class Counter(val numberValue : Int?,val charValue : Char?)
+data class Counter(val numberValue: Int?, val charValue: Char?)
 
 enum class CheckboxType {
     EMPTY,
@@ -240,14 +313,40 @@ enum class CheckboxType {
     FULL
 }
 
-data class ListItem(val indentation : Int,val bulletType : Bullet,val counterSet : Counter?,val checkbox : CheckboxType?,val tag : String?,val content : String)
+data class ListItem(val indentation: Int, val bulletType: Bullet, val counterSet: Counter?, val checkbox: CheckboxType?, val tag: String?, val content: String)
 
-data class TableRow(val indentation : Int,val columns : List<String>?)
+data class TableRow(val indentation: Int, val columns: List<String>?)
 
-data class Table(val rows : List<TableRow>,val formulas : List<String>)
+data class Table(val rows: List<TableRow>, val formulas: List<String>)
 
-data class Keyword(val key : String,val value : String)
+data class Keyword(val key: String, val value: String)
 
-data class LatexEnvironment(val name : String,val content : String)
+data class LatexEnvironment(val name: String, val content: String)
 
-data class ExportSnippet(val name:String,val value : String)
+data class ExportSnippet(val name: String, val value: String)
+
+data class Paragraph(val content: String) {
+    fun toOrg() = content
+}
+
+data class DocumentElement(
+        val paragraph: Paragraph? = null,
+        val planningLine: PlanningLine? = null,
+        val horizontalRule: String? = null,
+        val headline: Headline? = null) {
+    fun toOrg(): String {
+        if (paragraph != null)
+            return paragraph.toOrg()
+        if (headline != null)
+            return headline.toOrg()
+        if (planningLine != null)
+            return planningLine.toOrg()
+        if (horizontalRule != null)
+            return "$horizontalRule"
+        return ""
+    }
+}
+
+data class Document(val elements: List<DocumentElement>) {
+    fun toOrg() = elements.fold("", { prev, element -> "$prev\n${element.toOrg()}" })
+}

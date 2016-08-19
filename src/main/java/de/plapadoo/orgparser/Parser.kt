@@ -32,8 +32,8 @@ fun headlineParser(): Parser<Headline> {
     val priorityBegin = stringParser("[#")
     val priorityEnd = charParser(']')
     val priority = Parsers.between(priorityBegin, priorityValue, priorityEnd)
-    val title = regexParser("[^:]+", "title")
-    val tag = regexParser("[^:]+", "tag")
+    val title = regexParser("[^:\n]+", "title")
+    val tag = regexParser("[^:\n]+", "tag")
     val tagDelimiter = charParser(':')
     val tagList = tag.followedBy(tagDelimiter).many()
     val tags: Parser<MutableList<String>> = tagDelimiter.next(tagList)
@@ -233,7 +233,7 @@ fun timestampParser(): Parser<Timestamp> {
     val active =
             Parsers.sequence(
                     activePrefix.next(date.followedBy(space)),
-                    time,
+                    time.optional(),
                     space.next(repeaterOrDelay).optional(),
                     space.next(repeaterOrDelay).optional(),
                     activeSuffix,
@@ -241,7 +241,7 @@ fun timestampParser(): Parser<Timestamp> {
     val inactive =
             Parsers.sequence(
                     inactivePrefix.next(date.followedBy(space)),
-                    time,
+                    time.optional(),
                     space.next(repeaterOrDelay).optional(),
                     space.next(repeaterOrDelay).optional(),
                     inactiveSuffix,
@@ -313,7 +313,7 @@ fun planningParser(): Parser<Planning> {
 }
 
 fun planningLineParser(): Parser<PlanningLine> {
-    return planningParser().sepBy(regexParser("[\\t ]+", "planning line separator")).map { PlanningLine(it) }
+    return planningParser().sepBy1(regexParser("[\\t ]+", "planning line separator")).map { PlanningLine(it) }
 }
 
 fun listItemParser(): Parser<ListItem> {
@@ -405,4 +405,20 @@ fun exportSnippetParser(): Parser<ExportSnippet> {
             regexParser("([^@]|@(?!@))*","export snippet value").followedBy(stringParser("@@")),
             {name,value -> ExportSnippet(name,value)}
     )
+}
+
+fun paragraphParser(): Parser<Paragraph> {
+    return Parsers.or(regexParser("[^\n]+","paragraph").map { Paragraph(it) },Patterns.ALWAYS.toScanner("empty par").map { Paragraph("") })
+}
+
+fun documentElementParser(): Parser<DocumentElement> {
+    return Parsers.or(
+                headlineParser().map { DocumentElement(headline = it) }.label("headline"),
+                planningLineParser().map { DocumentElement(planningLine = it) }.label("planning line"),
+                horizontalRuleLineParser().map { DocumentElement(horizontalRule = it) }.label("horizontal rule"),
+                paragraphParser().map { DocumentElement(paragraph = it) }.label("paragraph"))
+}
+
+fun documentParser(): Parser<Document> {
+    return documentElementParser().sepEndBy(charParser('\n')).map { Document(it) }
 }

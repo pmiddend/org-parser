@@ -8,12 +8,19 @@ import java.time.LocalTime
 /**
  * Created by philipp on 8/7/16.
  */
-class ParserKtTest {
+class SingleParserTest {
     @Test
     fun `headline with just a title`() {
         val title = "foo"
         assertThat(headlineParser().parse("*** $title")).isEqualTo(Headline(level = 3,keyword = null,priority = null,title = title,tags = listOf()))
     }
+
+    @Test
+    fun `headline with title followed by newline`() {
+        val title = "foo"
+        assertThat(headlineParser().followedBy(charParser('\n')).parse("*** $title\n")).isEqualTo(Headline(level = 3,keyword = null,priority = null,title = title,tags = listOf()))
+    }
+
 
     @Test
     fun `headline with a keyword`() {
@@ -612,5 +619,10 @@ class ParserKtTest {
         val name = "name"
         val value = "value"
         assertThat(exportSnippetParser().parse("@@$name:$value@@")).isEqualTo(ExportSnippet(name=name,value=value))
+    }
+
+    @Test
+    fun `document with paragraph and headline`() {
+        assertThat(documentParser().parse("* headline\nparagraph\n")).isEqualTo(Document(listOf(DocumentElement(headline = Headline(1,null,null,"headline",listOf())),DocumentElement(paragraph = Paragraph("paragraph")))))
     }
 }
