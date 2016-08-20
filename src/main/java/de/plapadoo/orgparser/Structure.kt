@@ -1,6 +1,5 @@
 package de.plapadoo.orgparser
 
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -12,11 +11,7 @@ data class Headline(
         val keyword: String?,
         val priority: Char?,
         val title: String,
-        val tags: List<String>) {
-    fun toOrg(): String {
-        return "*".repeat(level) + (if (keyword != null) " $keyword" else "") + (if (priority != null) "#[$priority]" else "") + " $title" + (if (tags.isNotEmpty()) "\t" + tags.fold(":", { prev, tag -> "$prev$tag:" }) else "")
-    }
-}
+        val tags: List<String>)
 
 data class GreaterBlock(
         val type: String,
@@ -38,7 +33,7 @@ data class PropertyDrawer(
 
 data class Drawer(
         val name: String,
-        val content: String)
+        val content: List<String>)
 
 data class FootnoteLabel(
         val label: String,
@@ -78,33 +73,10 @@ enum class RepeaterUnit {
 data class RepeaterOrDelay(
         val mark: Repeater,
         val value: Int,
-        val unit: RepeaterUnit) {
-    fun toOrg(): String {
-        val mark = when(mark) {
-            Repeater.CUMULATE -> "+"
-            Repeater.CATCH_UP -> "++"
-            Repeater.RESTART -> ".+"
-            Repeater.ALL -> "-"
-            Repeater.FIRST -> "--"
-        }
-        val unit = when(unit) {
-            RepeaterUnit.HOUR -> "h"
-            RepeaterUnit.DAY -> "d"
-            RepeaterUnit.WEEK -> "w"
-            RepeaterUnit.MONTH -> "m"
-            RepeaterUnit.YEAR -> "y"
-        }
-
-        return mark + value + unit
-    }
-}
+        val unit: RepeaterUnit)
 
 sealed class Timestamp {
     class Sexp(val descriptor: String) : Timestamp() {
-        override fun toOrg(): String {
-            return "<%%$descriptor>"
-        }
-
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
@@ -126,14 +98,6 @@ sealed class Timestamp {
     }
 
     class Active(val date: Date, val time: Time?, val repeater1: RepeaterOrDelay?, val repeater2: RepeaterOrDelay?) : Timestamp() {
-        override fun toOrg(): String {
-            val time = if (time != null) " ${time.time.hour}:${time.time.minute} " else ""
-            val repeater1 = if (repeater1 != null) repeater1.toOrg() else ""
-            val repeater2 = if (repeater2 != null) repeater2.toOrg() else ""
-            return "<${date.date.year}-${date.date.monthValue}-${date.date.dayOfMonth} ${date.date.dayOfWeek.toOrg()}$time$repeater1$repeater2>"
-        }
-
-
         override fun toString(): String {
             return "Active(date=$date, time=$time, repeater1=$repeater1, repeater2=$repeater2)"
         }
@@ -162,13 +126,6 @@ sealed class Timestamp {
     }
 
     class Inactive(val date: Date, val time: Time?, val repeater1: RepeaterOrDelay?, val repeater2: RepeaterOrDelay?) : Timestamp() {
-        override fun toOrg(): String {
-            val time = if (time != null) " ${time.time.hour}:${time.time.minute} " else ""
-            val repeater1 = if (repeater1 != null) repeater1.toOrg() else ""
-            val repeater2 = if (repeater2 != null) repeater2.toOrg() else ""
-            return "[${date.date.year}-${date.date.monthValue}-${date.date.dayOfMonth} ${date.date.dayOfWeek.toOrg()}$time$repeater1$repeater2]"
-        }
-
         override fun toString(): String {
             return "Inactive(date=$date, time=$time, repeater1=$repeater1, repeater2=$repeater2)"
         }
@@ -197,10 +154,6 @@ sealed class Timestamp {
     }
 
     class ActiveRange(val from: Active, val to: Active) : Timestamp() {
-        override fun toOrg(): String {
-            return "${from.toOrg()}--${to.toOrg()}"
-        }
-
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
@@ -225,10 +178,6 @@ sealed class Timestamp {
     }
 
     class InactiveRange(val from: Inactive, val to: Inactive) : Timestamp() {
-        override fun toOrg(): String {
-            return "${from.toOrg()}--${to.toOrg()}"
-        }
-
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
@@ -251,20 +200,6 @@ sealed class Timestamp {
             return "InactiveRange(from=$from, to=$to)"
         }
     }
-
-    abstract fun toOrg(): String
-}
-
-fun DayOfWeek.toOrg(): String {
-    return when(this) {
-        DayOfWeek.MONDAY -> "Mon"
-        DayOfWeek.TUESDAY -> "Tue"
-        DayOfWeek.WEDNESDAY -> "Wed"
-        DayOfWeek.THURSDAY -> "Thu"
-        DayOfWeek.FRIDAY -> "Fri"
-        DayOfWeek.SATURDAY -> "Sat"
-        DayOfWeek.SUNDAY -> "Sun"
-    }
 }
 
 data class Duration(val hours: Int, val minutes: Int)
@@ -278,16 +213,9 @@ enum class PlanningKeyword {
 }
 
 data class Planning(val keyword: PlanningKeyword, val timestamp: Timestamp) {
-    fun toOrg(): String {
-        return "$keyword: ${timestamp.toOrg()}"
-    }
 }
 
-data class PlanningLine(val plannings: List<Planning>) {
-    fun toOrg(): String {
-        return plannings.fold("", { prev, planning -> "$prev ${planning.toOrg()}" })
-    }
-}
+data class PlanningLine(val plannings: List<Planning>)
 
 data class BabelCall(val value: String?)
 
@@ -325,28 +253,19 @@ data class LatexEnvironment(val name: String, val content: String)
 
 data class ExportSnippet(val name: String, val value: String)
 
-data class Paragraph(val content: String) {
-    fun toOrg() = content
-}
+data class Paragraph(val content: String)
 
 data class DocumentElement(
         val paragraph: Paragraph? = null,
         val planningLine: PlanningLine? = null,
         val horizontalRule: String? = null,
+        val greaterBlock: GreaterBlock? = null,
+        val propertyDrawer: PropertyDrawer? = null,
+        val drawer: Drawer? = null,
+        val dynamicBlock: DynamicBlock? = null,
+        val footnote: Footnote? = null,
+        val listItem: ListItem? = null,
         val headline: Headline? = null) {
-    fun toOrg(): String {
-        if (paragraph != null)
-            return paragraph.toOrg()
-        if (headline != null)
-            return headline.toOrg()
-        if (planningLine != null)
-            return planningLine.toOrg()
-        if (horizontalRule != null)
-            return "$horizontalRule"
-        return ""
-    }
 }
 
-data class Document(val elements: List<DocumentElement>) {
-    fun toOrg() = elements.fold("", { prev, element -> "$prev\n${element.toOrg()}" })
-}
+data class Document(val elements: List<DocumentElement>)

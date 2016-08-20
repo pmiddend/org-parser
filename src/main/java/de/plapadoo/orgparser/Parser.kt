@@ -80,18 +80,18 @@ fun dynamicBlockParser(): Parser<DynamicBlock> {
 }
 
 fun drawerParser(): Parser<Drawer> {
-    val name = regexParser(":[^:]+:", "drawer begin").map({ it.substring(1, it.length - 1) })
-    val content = regexParser("\n|(([^:][^\\n]*|:(?!END:)[^\\n]*)\n)*", "drawer line")
+    val name = regexParser(":[^:]+:", "doc begin").map({ it.substring(1, it.length - 1) })
+    val content = regexParser("[^:][^\\n]*|:(?!END:)[^\\n]*","doc line")
     val end = stringParser(":END:")
-    return Parsers.sequence(name.followedBy(nl), content, end, { name, content, end -> Drawer(name, content) })
+    return Parsers.sequence(name.followedBy(nl), content.sepEndBy(charParser('\n')), end, { name, content, end -> Drawer(name, content) })
 }
 
 fun propertyDrawerParser(): Parser<PropertyDrawer> {
     val begin = stringParser(":PROPERTIES:")
-    val nameLineRaw = regexParser(":([^E][^:]*|E(?!ND)[^:]*):", "property drawer name line").map { it.substring(1, it.length - 1) }
-    val namePlusLineRaw = regexParser(":([^E][^:]*|E(?!ND)[^:]*)\\+:", "property drawer name plus line").map { it.substring(1, it.length - 2) }
+    val nameLineRaw = regexParser(":([^E][^:]*|E(?!ND)[^:]*):", "property doc name line").map { it.substring(1, it.length - 1) }
+    val namePlusLineRaw = regexParser(":([^E][^:]*|E(?!ND)[^:]*)\\+:", "property doc name plus line").map { it.substring(1, it.length - 2) }
     val ws = regexParser("[ \\t]*", "white space")
-    val value = regexParser("[^\\n]+", "property drawer value")
+    val value = regexParser("[^\\n]+", "property doc value")
     val nameValueLine = Parsers.sequence(nameLineRaw.followedBy(ws), value, { name, value -> Property(name = name, value = value, plus = false) })
     val namePlusValueLine = Parsers.sequence(namePlusLineRaw.followedBy(ws), value, { name, value -> Property(name = name, value = value, plus = true) })
     val end = stringParser(":END:")
@@ -321,7 +321,8 @@ fun listItemParser(): Parser<ListItem> {
             regexParser("[0-9]+", "list numeric counter").map { it.toInt() }.map { Counter(numberValue = it, charValue = null) },
             regexParser("[a-zA-Z]", "list alphabetic counter").map { it[0] }.map { Counter(numberValue = null, charValue = it) })
     val bullet = Parsers.or(
-            charParser('*').map { asterisk() },
+            // This conflicts with headline definitions (no idea how to parse this correctly)
+//            charParser('*').map { asterisk() },
             charParser('-').map { hyphen() },
             charParser('+').map { plus() },
             counter.followedBy(charParser('.')).map { Bullet(type = BulletType.COUNTER_DOT, counter = it) },
@@ -416,6 +417,12 @@ fun documentElementParser(): Parser<DocumentElement> {
                 headlineParser().map { DocumentElement(headline = it) }.label("headline"),
                 planningLineParser().map { DocumentElement(planningLine = it) }.label("planning line"),
                 horizontalRuleLineParser().map { DocumentElement(horizontalRule = it) }.label("horizontal rule"),
+                greaterBlockParser().map { DocumentElement(greaterBlock = it) }.label("greater block"),
+                propertyDrawerParser().map { DocumentElement(propertyDrawer = it) }.label("property doc"),
+                drawerParser().map { DocumentElement(drawer = it) }.label("doc"),
+                dynamicBlockParser().map { DocumentElement(dynamicBlock = it) }.label("dynamic block"),
+                footnoteParser().map { DocumentElement(footnote = it) }.label("footnote"),
+                listItemParser().map { DocumentElement(listItem = it) }.label("list item"),
                 paragraphParser().map { DocumentElement(paragraph = it) }.label("paragraph"))
 }
 

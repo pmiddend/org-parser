@@ -108,22 +108,22 @@ class SingleParserTest {
     @Test
     fun `drawer without content`() {
         val name = "name"
-        val content = "\n"
-        assertThat(drawerParser().parse(":$name:\n$content:END:")).isEqualTo(Drawer(name = name,content = content))
+        val content = ""
+        assertThat(drawerParser().parse(":$name:\n$content:END:")).isEqualTo(Drawer(name = name,content = listOf()))
     }
 
     @Test
     fun `drawer with single content line`() {
         val name = "name"
         val content = "foo\n"
-        assertThat(drawerParser().parse(":$name:\n$content:END:")).isEqualTo(Drawer(name = name,content = content))
+        assertThat(drawerParser().parse(":$name:\n$content:END:")).isEqualTo(Drawer(name = name,content = listOf("foo")))
     }
 
     @Test
     fun `drawer with two content lines`() {
         val name = "name"
         val content = "foo\nbar\n"
-        assertThat(drawerParser().parse(":$name:\n$content:END:")).isEqualTo(Drawer(name = name,content = content))
+        assertThat(drawerParser().parse(":$name:\n$content:END:")).isEqualTo(Drawer(name = name,content = listOf("foo","bar")))
     }
 
     @Test
