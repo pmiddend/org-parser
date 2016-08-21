@@ -265,6 +265,7 @@ data class DocumentElement(
         val dynamicBlock: DynamicBlock? = null,
         val footnote: Footnote? = null,
         val listItem: ListItem? = null,
+        val table: Table? = null,
         val headline: Headline? = null) {
 }
 

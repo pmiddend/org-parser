@@ -112,6 +112,8 @@ fun toOrg(doc: DocumentElement): String {
         return toOrg(doc.footnote)
     if (doc.listItem != null)
         return toOrg(doc.listItem)
+    if (doc.table != null)
+        return toOrg(doc.table)
     return ""
 }
 
@@ -124,25 +126,40 @@ fun toOrg(doc: Counter): String {
         return doc.numberValue.toString()
 }
 
+fun toOrg(doc: TableRow, maxWidths: Map<Int, Int>): String {
+    val indentation = " ".repeat(doc.indentation)
+    val prefix = indentation + "|"
+    if (doc.columns == null) {
+        return prefix + (0..maxWidths.size-1).map { "-".repeat((maxWidths[it] ?: 0)+2) }.joinToString(separator = "+") + "|"
+    }
+    return prefix + doc.columns.mapIndexed { i, s -> " " + s.padEnd(maxWidths[i] ?: 0) + " " }.joinToString(separator = "|") + "|"
+}
+
+fun toOrg(doc: Table): String {
+    val resultMap = mutableMapOf<Int, Int>()
+    doc.rows.forEach { row -> row.columns?.forEachIndexed { i, s -> resultMap[i] = Math.max(resultMap[i] ?: 0, s.length) } }
+    return doc.rows.map { toOrg(it, resultMap) }.joinToString(separator = "\n")
+}
+
 fun toOrg(doc: ListItem): String {
     val bullet = when (doc.bulletType.type) {
-        BulletType.ASTERISK -> "*"
-        BulletType.HYPHEN -> "-"
-        BulletType.PLUS -> "+"
+        BulletType.ASTERISK -> "* "
+        BulletType.HYPHEN -> "- "
+        BulletType.PLUS -> "+ "
         BulletType.COUNTER_DOT ->
-            (if (doc.bulletType.counter == null) "" else toOrg(doc.bulletType.counter))+"."
+            (if (doc.bulletType.counter == null) "" else toOrg(doc.bulletType.counter)) + ". "
         BulletType.COUNTER_PAREN ->
-            (if (doc.bulletType.counter == null) "" else toOrg(doc.bulletType.counter))+")"
+            (if (doc.bulletType.counter == null) "" else toOrg(doc.bulletType.counter)) + ") "
     }
-    val counterset = if(doc.counterSet != null) " [@${toOrg(doc.counterSet)}]" else ""
-    val checkbox = if(doc.checkbox != null) " ${toOrg(doc.checkbox)}" else ""
-    val tag = if(doc.tag != null) "${doc.tag} ::" else ""
+    val counterset = if (doc.counterSet != null) " [@${toOrg(doc.counterSet)}] " else ""
+    val checkbox = if (doc.checkbox != null) " ${toOrg(doc.checkbox)} " else ""
+    val tag = if (doc.tag != null) "${doc.tag} :: " else ""
     val indentation = " ".repeat(doc.indentation)
-    return "$indentation$bullet$counterset$checkbox$tag ${doc.content}"
+    return "$indentation$bullet$counterset$checkbox$tag${doc.content}"
 }
 
 fun toOrg(doc: CheckboxType): String {
-    val content = when(doc) {
+    val content = when (doc) {
         CheckboxType.EMPTY -> " "
         CheckboxType.HALF -> "-"
         CheckboxType.FULL -> "X"

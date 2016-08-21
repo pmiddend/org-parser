@@ -23,3 +23,4 @@ Not much here yet, I will update the readme according to how far I get with this
  - Keywords
  - LaTeX environments (no nesting support, though)
  - Export snippets
+ - Table sanitizing

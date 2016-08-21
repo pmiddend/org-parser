@@ -349,7 +349,7 @@ fun listItemParser(): Parser<ListItem> {
 
 fun tableRowParser(): Parser<TableRow> {
     val indentation = regexParser("[ \\t]*", "indentation").map { it.length }
-    val tableCell = regexParser("[^\\n|]+", "table cell")
+    val tableCell = regexParser("[^\\n|]+", "table cell").map { it.trim() }
     return Parsers.sequence(
             indentation,
             Parsers.or(
@@ -364,8 +364,8 @@ fun tableFormulaParser(): Parser<String> {
 
 fun tableParser(): Parser<Table> {
     return Parsers.sequence(
-            tableRowParser().sepEndBy1(charParser('\n')),
-            tableFormulaParser().sepEndBy(charParser('\n')),
+            tableRowParser().sepBy1(charParser('\n')),
+            tableFormulaParser().sepBy(charParser('\n')),
             { rows, formulas -> Table(rows, formulas) })
 }
 
@@ -423,6 +423,7 @@ fun documentElementParser(): Parser<DocumentElement> {
                 dynamicBlockParser().map { DocumentElement(dynamicBlock = it) }.label("dynamic block"),
                 footnoteParser().map { DocumentElement(footnote = it) }.label("footnote"),
                 listItemParser().map { DocumentElement(listItem = it) }.label("list item"),
+                tableParser().map { DocumentElement(table = it) }.label("table"),
                 paragraphParser().map { DocumentElement(paragraph = it) }.label("paragraph"))
 }
 

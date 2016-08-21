@@ -26,7 +26,7 @@ class DocumentParserTest {
                 "[fn:haha] a wild footnote appears\n" +
                 "\n" +
                 "------\n" +
-                "-a list item\n" +
+                "- a list item\n" +
                 "  a) [ ]a list item\n" +
                 "    1. tag :: a list item\n" +
                 "\n" +
@@ -34,6 +34,18 @@ class DocumentParserTest {
                 "lol\n" +
                 "#+END_QUOTE\n" +
                 ""
+
+        val doc = documentParser().parse(document)
+        assertThat(toOrg(doc)).isEqualTo(document)
+    }
+
+    @Test
+    fun `document with table`() {
+        val document = "* headline\n" +
+                "|---+-----|\n" +
+                "| a | b c |\n" +
+                "|---+-----|\n" +
+                "done\n"
 
         val doc = documentParser().parse(document)
         assertThat(toOrg(doc)).isEqualTo(document)
